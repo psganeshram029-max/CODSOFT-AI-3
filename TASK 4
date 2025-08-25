@@ -1,0 +1,83 @@
+import pandas as pd
+import os
+import time
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# 🧠 Sample data (if no CSV found)
+movies = {
+    "title": [
+        "The Matrix", "John Wick", "Titanic", "Inception", "La La Land",
+        "Avengers", "Interstellar", "The Notebook"
+    ],
+    "genre": [
+        "Action Sci-Fi", "Action Thriller", "Romance Drama", "Sci-Fi Thriller",
+        "Romance Musical", "Superhero Action", "Sci-Fi Drama", "Romance"
+    ],
+    "description": [
+        "A hacker discovers reality is a simulated world and fights machines.",
+        "An ex-hitman comes out of retirement to seek vengeance.",
+        "A love story blossoms on the ill-fated Titanic ship.",
+        "A thief enters dreams to steal secrets and plant ideas.",
+        "Struggling artists fall in love in Los Angeles.",
+        "Superheroes unite to save the world from Thanos.",
+        "Astronauts travel through a wormhole to save humanity.",
+        "A touching story of enduring love and lost memories."
+    ]
+}
+
+df = pd.DataFrame(movies)
+
+# 🎯 Combine features for TF-IDF
+df["combined"] = df["title"] + " " + df["genre"] + " " + df["description"]
+
+# 🔍 Vectorizing
+tfidf = TfidfVectorizer(stop_words="english")
+tfidf_matrix = tfidf.fit_transform(df["combined"])
+
+# 🔗 Cosine similarity matrix
+cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+
+# 📍 Title to index mapping
+indices = pd.Series(df.index, index=df["title"].str.lower())
+
+# 🎬 Recommendation Logic
+def recommend_movies(title, top_n=5):
+    title = title.lower()
+    if title not in indices:
+        print(f"\n😔 Movie '{title}' not found in our database.")
+        print("📌 Try another title from this list:")
+        print("🗂  " + ", ".join(df['title'].tolist()))
+        return []
+
+    idx = indices[title]
+    sim_scores = list(enumerate(cosine_sim[idx]))
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:top_n+1]
+    movie_indices = [i[0] for i in sim_scores]
+    return df.iloc[movie_indices][["title", "genre"]]
+
+# 🏁 Start
+print("✨ Welcome to Harini's Movie Recommendation System ✨")
+print("📽  Type your favorite movie and get 5 similar suggestions!")
+print("💡 Type 'exit' to quit anytime.\n")
+
+while True:
+    movie_input = input("🎞  Enter a movie you like: ").strip()
+    
+    if movie_input.lower() == 'exit':
+        print("\n🎉 Thank you for using the recommender. See you again!")
+        break
+
+    print("🔎 Finding similar movies", end="")
+    for _ in range(3):
+        print(".", end="", flush=True)
+        time.sleep(0.5)
+    print("\n")
+
+    results = recommend_movies(movie_input, top_n=5)
+
+    if not results.empty:
+        print("🍿 Here are some movies you might enjoy:\n")
+        for i, row in enumerate(results.itertuples(), 1):
+            print(f"  {i}. 🎬 {row.title}  ({row.genre})")
+        print()
